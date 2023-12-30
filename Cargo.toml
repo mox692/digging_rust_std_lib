@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "library/std_orc",
+    "library/core_orc",
+    "library/alloc_orc",
+]
