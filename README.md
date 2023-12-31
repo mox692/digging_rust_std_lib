@@ -27,3 +27,5 @@ Reimplementation of rust's std library, intended primarily for learning purposes
 - [x] refcell
 - [ ] Mutex
 - [ ] Index
+- [ ] Sync
+  - [ ] mpsc
