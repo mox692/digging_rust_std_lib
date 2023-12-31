@@ -3,7 +3,11 @@ use std::ops::{Deref, DerefMut};
 use std::ptr;
 
 pub struct Bocs<T> {
-    // TODO: consider aliasing.
+    /// TODO: consider aliasing, and use `Unique<T>`. Additionaly, considering the variance
+    /// for this type.
+    /// * https://doc.rust-lang.org/reference/subtyping.html
+    /// * https://www.youtube.com/watch?v=iVYWDIW71jk
+    /// * https://lifetime-variance.sunshowers.io/
     inner: *const T,
 }
 
