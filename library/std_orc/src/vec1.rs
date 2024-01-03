@@ -6,14 +6,14 @@ use std::ptr;
 
 // TODO: rename
 #[derive(Debug)]
-pub struct Vec1<T> {
+pub struct Vec<T> {
     // TODO: Use unique.
     ptr: *const T,
     len: usize,
     cap: usize,
 }
 
-impl<T> Vec1<T> {
+impl<T> Vec<T> {
     #[inline(always)]
     fn size_of_inner() -> usize {
         std::mem::size_of::<T>()
@@ -29,7 +29,7 @@ impl<T> Vec1<T> {
         // Here, we ensure that allocated memory is not zero-sized.
         let s = unsafe { alloc::alloc(layout) };
 
-        Vec1 {
+        Vec {
             ptr: s as *const T,
             len: len,
             cap: cap,
@@ -45,7 +45,7 @@ impl<T> Vec1<T> {
 
         unsafe { ptr::write(m, x) };
 
-        Vec1 {
+        Vec {
             ptr: m as *const T,
             len: 1,
             cap: 1,
@@ -56,7 +56,7 @@ impl<T> Vec1<T> {
         // check whether input `n` is a valid data.
         assert!(
             index < self.len,
-            "specified index `{}` is larger than the length of this Vec1, {}",
+            "specified index `{}` is larger than the length of this Vec, {}",
             index,
             self.len
         );
@@ -113,14 +113,14 @@ mod test {
     #[test]
     fn test_new_1() {
         let a = 42;
-        let v: Vec1<i32> = Vec1::new_1(a);
+        let v: Vec<i32> = Vec::new_1(a);
         let result = v.at(0);
         assert_eq!(result, &42)
     }
 
     #[test]
     fn test_push() {
-        let mut v = Vec1::new_1(0);
+        let mut v = Vec::new_1(0);
         v.push(1);
         v.push(2);
         v.push(3);
