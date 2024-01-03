@@ -6,17 +6,27 @@ use std::ptr::{self, NonNull};
 struct RcInner<T> {
     value: T,
     strong_ref_count: Cell<usize>,
+    weak_ref_count: Cell<usize>,
 }
 
 impl<T> RcInner<T> {
     fn strong_ref_count(&self) -> usize {
         self.strong_ref_count.get()
     }
-    fn decr_ref_connt(&self) {
+    fn decr_strong_ref_connt(&self) {
         self.strong_ref_count.set(self.strong_ref_count() - 1);
     }
-    fn incr_ref_connt(&self) {
+    fn incr_strong_ref_connt(&self) {
         self.strong_ref_count.set(self.strong_ref_count() + 1)
+    }
+    fn weak_ref_count(&self) -> usize {
+        self.weak_ref_count.get()
+    }
+    fn decr_weak_ref_connt(&self) {
+        self.weak_ref_count.set(self.weak_ref_count() - 1);
+    }
+    fn incr_weak_ref_connt(&self) {
+        self.weak_ref_count.set(self.weak_ref_count() + 1)
     }
 }
 
@@ -31,6 +41,7 @@ impl<T> Rc<T> {
         let inner = Box::new(RcInner {
             value: v,
             strong_ref_count: Cell::new(1),
+            weak_ref_count: Cell::new(1),
         });
 
         unsafe {
@@ -52,12 +63,20 @@ impl<T> Rc<T> {
     pub fn strong_count(this: &Rc<T>) -> usize {
         unsafe { this.inner.as_ref().strong_ref_count() }
     }
+
+    pub fn weak_count(this: &Rc<T>) -> usize {
+        unsafe { this.inner.as_ref().weak_ref_count() }
+    }
+
+    pub fn downgrade(this: &Rc<T>) -> Weak<T> {
+        todo!()
+    }
 }
 
 impl<T> Clone for Rc<T> {
     fn clone(&self) -> Self {
         unsafe {
-            self.inner.as_ref().incr_ref_connt();
+            self.inner.as_ref().incr_strong_ref_connt();
         }
         Rc { inner: self.inner }
     }
@@ -72,12 +91,18 @@ impl<T> AsRef<T> for Rc<T> {
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         // decrease ref count
-        unsafe { self.inner.as_ref().decr_ref_connt() }
+        unsafe { self.inner.as_ref().decr_strong_ref_connt() }
         if Rc::strong_count(self) == 0 {
             // strong_ref_count will be zero by this drop, so we drop `RcInner` as well.
             unsafe { ptr::drop_in_place(self.inner.as_mut()) }
         }
     }
+}
+
+pub struct Weak<T> {
+    // This `NonNull` might point to invalid memory region, for example when
+    // we use `Weak::new()`, but that would not cause problem.
+    inner: NonNull<RcInner<T>>,
 }
 
 #[cfg(test)]
