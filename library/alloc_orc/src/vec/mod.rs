@@ -27,13 +27,17 @@ impl<T> Vec<T> {
 
         // SAFETY:
         // Here, we ensure that allocated memory is not zero-sized.
-        let s = unsafe { alloc::alloc(layout) };
+        let ptr = unsafe { alloc::alloc(layout) };
 
         Vec {
-            ptr: s as *const T,
+            ptr: ptr as *const T,
             len: len,
             cap: cap,
         }
+    }
+
+    pub fn new() -> Self {
+        todo!()
     }
 
     pub fn new_1(x: T) -> Self {
