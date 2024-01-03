@@ -78,6 +78,7 @@ impl<T> Rc<T> {
 }
 
 impl<T> Clone for Rc<T> {
+    /// We just increment strong_ref_count.
     fn clone(&self) -> Self {
         unsafe {
             self.inner.as_ref().incr_strong_ref_count();
@@ -107,7 +108,7 @@ impl<T> Drop for Rc<T> {
             unsafe { drop_in_place(self.get_mut_unchecked()) };
 
             if Rc::weak_count(self) == 0 {
-                // threre no weak ref left, so we drop this Rc.
+                // threre no weak ref left, so we drop this Rc itsself.
                 unsafe {
                     alloc::dealloc(self.inner.as_ptr().cast::<u8>(), Layout::for_value(self))
                 };
