@@ -1,6 +1,10 @@
 // Resources:
 // https://doc.rust-lang.org/nomicon/vec/vec-alloc.html
 
+// TODO:
+// * be able to reallocate
+// * impl Eq, Drop
+
 use std::alloc::{self, dealloc, Layout};
 use std::ptr;
 
@@ -37,7 +41,11 @@ impl<T> Vec<T> {
     }
 
     pub fn new() -> Self {
-        todo!()
+        Self {
+            ptr: ptr::null(),
+            len: 0,
+            cap: 0,
+        }
     }
 
     pub fn new_1(x: T) -> Self {
@@ -84,7 +92,7 @@ impl<T> Vec<T> {
             // here, we have to reallocate heap memory for this vec.
 
             // usually, it is common way to `double` its cap when we want to grow the vector's cap.
-            let new_cap = self.cap * 2;
+            let new_cap = if self.cap == 0 { 8 } else { self.cap * 2 };
             let layout = Layout::array::<T>(new_cap).unwrap();
             let new_ptr = unsafe { alloc::alloc(layout) };
 
@@ -133,5 +141,16 @@ mod test {
         assert_eq!(v.at(1), &1);
         assert_eq!(v.at(2), &2);
         assert_eq!(v.at(3), &3);
+    }
+
+    #[test]
+    fn test_new() {
+        let mut v: Vec<i32> = Vec::new();
+        v.push(0);
+        v.push(1);
+        v.push(2);
+        assert_eq!(v.at(0), &0);
+        assert_eq!(v.at(1), &1);
+        assert_eq!(v.at(2), &2);
     }
 }
