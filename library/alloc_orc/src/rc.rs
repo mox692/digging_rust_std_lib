@@ -5,18 +5,18 @@ use std::ptr::{self, NonNull};
 
 struct RcInner<T> {
     value: T,
-    ref_count: Cell<usize>,
+    strong_ref_count: Cell<usize>,
 }
 
 impl<T> RcInner<T> {
-    fn ref_count(&self) -> usize {
-        self.ref_count.get()
+    fn strong_ref_count(&self) -> usize {
+        self.strong_ref_count.get()
     }
     fn decr_ref_connt(&self) {
-        self.ref_count.set(self.ref_count() - 1);
+        self.strong_ref_count.set(self.strong_ref_count() - 1);
     }
     fn incr_ref_connt(&self) {
-        self.ref_count.set(self.ref_count() + 1)
+        self.strong_ref_count.set(self.strong_ref_count() + 1)
     }
 }
 
@@ -30,7 +30,7 @@ impl<T> Rc<T> {
     pub fn new(v: T) -> Self {
         let inner = Box::new(RcInner {
             value: v,
-            ref_count: Cell::new(1),
+            strong_ref_count: Cell::new(1),
         });
 
         unsafe {
@@ -50,7 +50,7 @@ impl<T> Rc<T> {
     }
 
     pub fn strong_count(this: &Rc<T>) -> usize {
-        unsafe { this.inner.as_ref().ref_count() }
+        unsafe { this.inner.as_ref().strong_ref_count() }
     }
 }
 
@@ -74,7 +74,7 @@ impl<T> Drop for Rc<T> {
         // decrease ref count
         unsafe { self.inner.as_ref().decr_ref_connt() }
         if Rc::strong_count(self) == 0 {
-            // ref_count will be zero by this drop, so we drop `RcInner` as well.
+            // strong_ref_count will be zero by this drop, so we drop `RcInner` as well.
             unsafe { ptr::drop_in_place(self.inner.as_mut()) }
         }
     }
