@@ -1,7 +1,8 @@
 use core_orc::cell::Cell;
 use std::{
+    alloc::{self, Layout},
     borrow::BorrowMut,
-    ptr::{self, NonNull},
+    ptr::{drop_in_place, NonNull},
 };
 
 struct RcInner<T> {
@@ -94,10 +95,23 @@ impl<T> AsRef<T> for Rc<T> {
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         // decrease ref count
-        unsafe { self.inner.as_ref().decr_strong_ref_count() }
+        unsafe {
+            self.inner.as_ref().decr_strong_ref_count();
+        }
+
         if Rc::strong_count(self) == 0 {
-            // strong_ref_count will be zero by this drop, so we drop `RcInner` as well.
-            unsafe { ptr::drop_in_place(self.inner.as_mut()) }
+            unsafe {
+                self.inner.as_ref().decr_weak_ref_count();
+            }
+            // we drop inner value T.
+            unsafe { drop_in_place(self.get_mut_unchecked()) };
+
+            if Rc::weak_count(self) == 0 {
+                // threre no weak ref left, so we drop this Rc.
+                unsafe {
+                    alloc::dealloc(self.inner.as_ptr().cast::<u8>(), Layout::for_value(self))
+                };
+            }
         }
     }
 }
@@ -135,6 +149,8 @@ fn is_dangling_pointer(ptr: *const ()) -> bool {
 
 #[cfg(test)]
 mod test {
+    use core_orc::cell::RefCell;
+
     use super::*;
     #[test]
     fn inner_strong_count_is_updated_collectly() {
@@ -151,9 +167,67 @@ mod test {
         assert_eq!(Rc::strong_count(&rc), 1)
     }
 
+    #[allow(dead_code)]
     #[test]
     fn cycle_reference_by_weak_ref_work_collectly() {
-        // TODO: write test
+        // leak example
+        {
+            struct Node {
+                value: i32,
+                next: RefCell<Option<Rc<Node>>>,
+            }
+
+            let mut node1 = Rc::new(Node {
+                value: 1,
+                next: RefCell::new(None),
+            });
+
+            let node2 = Rc::new(Node {
+                value: 2,
+                next: RefCell::new(Some(Rc::clone(&node1))),
+            });
+
+            // Create a circular reference
+            unsafe {
+                *node1.inner.borrow_mut().as_mut().value.next.borrow_mut() =
+                    Some(Rc::clone(&node2));
+            }
+
+            // drop node1 here.
+            drop(node1);
+
+            // but, strong ref count in node2 is still two.
+            assert_eq!(Rc::strong_count(&node2), 2);
+        }
+
+        {
+            struct Node {
+                value: i32,
+                next: RefCell<Option<Weak<Node>>>,
+            }
+
+            let mut node1 = Rc::new(Node {
+                value: 1,
+                next: RefCell::new(None),
+            });
+
+            let node2 = Rc::new(Node {
+                value: 2,
+                next: RefCell::new(Some(Rc::downgrade(&Rc::clone(&node1)))),
+            });
+
+            // Create a circular reference
+            unsafe {
+                *node1.inner.borrow_mut().as_mut().value.next.borrow_mut() =
+                    Some(Rc::downgrade(&Rc::clone(&node2)));
+            }
+            // drop node1 here.
+            drop(node1);
+
+            // but, strong ref count in node2 is still two.
+            assert_eq!(Rc::strong_count(&node2), 1);
+            assert_eq!(Rc::weak_count(&node2), 1);
+        }
     }
 
     // TODO: ensure that memory leak doesn't happen.
